@@ -660,6 +660,7 @@ struct Request {
   size_t content_length_ = 0;
   ContentProvider content_provider_;
   bool is_chunked_content_provider_ = false;
+  bool is_without_length_ = false;
   size_t authorization_count_ = 0;
 };
 
@@ -7646,6 +7647,9 @@ inline bool ClientImpl::write_content_with_provider(Stream &strm,
 
     return detail::write_content_chunked(strm, req.content_provider_,
                                          is_shutting_down, *compressor, error);
+  } else if(req.is_without_length_) {
+    return detail::write_content_without_length(strm, req.content_provider_,
+                                                is_shutting_down);
   } else {
     return detail::write_content(strm, req.content_provider_, 0,
                                  req.content_length_, is_shutting_down, error);
@@ -7834,6 +7838,7 @@ inline std::unique_ptr<Response> ClientImpl::send_with_content_provider(
       req.content_length_ = content_length;
       req.content_provider_ = std::move(content_provider);
       req.is_chunked_content_provider_ = false;
+      req.is_without_length_ = true;
     } else if (content_provider_without_length) {
       req.content_length_ = 0;
       req.content_provider_ = detail::ContentProviderAdapter(
